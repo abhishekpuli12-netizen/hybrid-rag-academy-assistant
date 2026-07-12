@@ -166,7 +166,8 @@ If the requested information is outside the academy knowledge base, the assistan
 
 ### Admissions Assistance
 
-*(Add Screenshot 4 here)*
+<img width="920" height="415" alt="Screenshot 2026-07-13 021041" src="https://github.com/user-attachments/assets/6b1c3661-a4c4-4ff0-ac97-01269c1ff5a5" />
+
 
 ---
 
