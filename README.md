@@ -31,7 +31,8 @@ Instead of relying solely on an LLM, the assistant retrieves relevant informatio
 
 ## 🏗️ Architecture
 
-<img width="820" height="1400" alt="rag_pipeline" src="https://github.com/user-attachments/assets/35c11766-f183-4dda-8072-41a181285c47" />
+<img width="2500" height="1200" alt="rag_flow_horizontal" src="https://github.com/user-attachments/assets/229512b1-6c79-4997-b7be-d7ac8b6023db" />
+
 
 
 ## 🛠️ Tech Stack
