@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+ollama
+faiss-cpu
+sentence-transformers
+transformers
+torch
+torchvision
+torchaudio
+langchain-text-splitters
+rank-bm25
+numpy
+requests
+python-dotenv
+pydantic

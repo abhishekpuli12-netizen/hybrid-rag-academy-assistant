@@ -1,0 +1,40 @@
+
+
+services:
+
+  backend:
+
+    build: ./backend
+
+    container_name: kalashala_backend
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    volumes:
+      - ./backend:/app
+
+    restart: unless-stopped
+
+  frontend:
+
+    build: ./frontend
+
+    container_name: kalashala_frontend
+
+    ports:
+      - "8501:8501"
+
+    depends_on:
+      - backend
+
+    volumes:
+      - ./frontend:/app
+
+    restart: unless-stopped
