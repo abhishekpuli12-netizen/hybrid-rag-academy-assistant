@@ -1,6 +1,9 @@
 # Academy Name:
 Kalasala Beauty and Makeup Academy 
 
+## Address
+Location: Hyderabad, Near Madhapur, Hi-Tech City
+
 # Academy Highlights
 
 ## CIDESCO Certified Trainers
