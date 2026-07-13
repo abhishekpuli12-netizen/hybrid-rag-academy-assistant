@@ -1,29 +1,13 @@
-# Contact Information
+# Admissions/contacts
 
-## Academy
+For admissions, enroll, course registration, seat reservations, and appointment requests, please contact us:
 
-Kalashala Beauty & Makeup Academy
+📞 Phone: +91-9876543210
 
-### Address
+📧 Email: admissions@academy.com
 
-Madhapur, Hyderabad
+🌐 Website: https://academy.com
 
-### Phone
+📷Instagram: https://instagram.com/academy
 
-9182696989
-
-### Email
-
-info@kalashala.com
-
-### Website
-
-https://kalashala.com
-
-### Instagram
-
-https://instagram.com/kalashala
-
-### Facebook
-
-https://facebook.com/kalashala
+Our admissions team will be happy to guide you through the admission and enrollment process.
