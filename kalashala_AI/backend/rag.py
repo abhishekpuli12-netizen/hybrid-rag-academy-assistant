@@ -28,7 +28,14 @@ from guardrails import (
     normalize_question,
     validate_generated_answer,
 )
-from knowledge_lookup import lookup_course_fee
+from knowledge_lookup import (
+    lookup_admissions,
+    lookup_academy_fact,
+    lookup_course_fee,
+    lookup_courses,
+    lookup_course_details,
+    lookup_trainers,
+)
 
 from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
@@ -577,8 +584,18 @@ def is_initialized():
 
 
 def answer_known_fee(question, request_started):
-    """Answer fee questions from the source table without an LLM call."""
+    """Answer common structured facts from trusted Markdown without an LLM."""
     lookup = lookup_course_fee(question, DATA_DIR / "fees.md")
+    if lookup is None:
+        lookup = lookup_courses(question, DATA_DIR / "courses.md")
+    if lookup is None:
+        lookup = lookup_course_details(question, DATA_DIR / "courses.md")
+    if lookup is None:
+        lookup = lookup_trainers(question, DATA_DIR / "trainers.md")
+    if lookup is None:
+        lookup = lookup_admissions(question, DATA_DIR / "contacts.md")
+    if lookup is None:
+        lookup = lookup_academy_fact(question, DATA_DIR)
     if lookup is None:
         return None
 
@@ -594,7 +611,7 @@ def answer_known_fee(question, request_started):
             "sparse_candidates": 0,
             "reranked_candidates": 0,
             "context_chunks": lookup["matched_rows"],
-            "answer_mode": "verified_fee_lookup",
+            "answer_mode": f"verified_{lookup['source']['category']}_lookup",
         },
     }
 # ==========================================================

@@ -30,6 +30,7 @@ class GuardrailTests(unittest.TestCase):
     def test_non_academy_topic_is_detected(self):
         self.assertFalse(is_academy_related("Explain quantum computing"))
         self.assertTrue(is_academy_related("What are the makeup course fees?"))
+        self.assertTrue(is_academy_related("What courses do you offer?"))
 
     def test_output_numbers_must_be_in_retrieved_context(self):
         context = "The Professional Makeup Course fee is ₹35,000 and lasts 8 weeks."

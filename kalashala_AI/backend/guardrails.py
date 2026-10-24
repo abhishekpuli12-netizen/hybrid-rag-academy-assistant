@@ -41,8 +41,8 @@ _PROMPT_INJECTION_PATTERNS = (
 
 _ACADEMY_TERMS = re.compile(
     r"\b(academy|kalashala|kalasala|beauty|makeup|make-up|bridal|"
-    r"course|workshop|fee|fees|price|cost|trainer|teacher|faculty|"
-    r"admission|enroll(?:ment)?|register|batch|class(?:es)?|schedule|"
+    r"courses?|workshops?|fee|fees|prices?|costs?|trainers?|teachers?|faculty|"
+    r"admissions?|enroll(?:ment)?|register|batches?|class(?:es)?|schedules?|"
     r"certificate|certification|cidesco|hair|saree|draping|beautician|"
     r"location|address|contact|hostel|parking|hours|timing|language)\b",
     re.IGNORECASE,

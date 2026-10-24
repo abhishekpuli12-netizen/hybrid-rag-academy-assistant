@@ -1,3 +1,7 @@
+| Knowledge answers | Every academy question depended on retrieval and an LLM response | Fees, offered-course lists, named course details, trainer/CIDESCO, admissions/contact, and common facilities/FAQ answers are read directly from trusted Markdown files |
+| Knowledge answers | Every academy question depended on retrieval and an LLM response | Fees, offered-course lists, trainer/CIDESCO, and admissions/contact answers are now read directly from their trusted Markdown files |
+| Knowledge answers | Every academy question depended on retrieval and an LLM response | Fees, offered-course lists, trainer/CIDESCO, and admissions/contact answers are now read directly from their trusted Markdown files |
+| Safety | Primarily prompt-based | 500-character input cap, injection/domain checks, output-size and disclosure checks, unsupported-number rejection |
 # 🎓 Hybrid RAG Academy Assistant
 
 A Retrieval-Augmented Generation (RAG) based AI assistant for **Kalashala Beauty & Makeup Academy** that answers academy-related queries using a local Large Language Model (LLM), Hybrid Search, and Cross-Encoder Reranking.
@@ -27,6 +31,9 @@ Instead of relying solely on an LLM, the assistant retrieves relevant informatio
 
 These are configuration and behavior changes, **not measured speedup or accuracy claims**. No comparable before/after benchmark has been run yet. Real latency varies by CPU/GPU, model availability, first-run model download, and Ollama load. For a meaningful comparison, run the same representative questions several times with a warm model, record stage timings, and compare median and p95 latency; use a labeled question set to measure retrieval recall and answer correctness.
 The deterministic fee lookup was exercised against the live backend on this development machine with 10 repeated requests: client-observed median **9 ms**, p95 **105 ms** (first request **105 ms**; subsequent requests **7–10 ms**). The API's first-response `total_ms` was **3.1 ms**. This is a small local sample for the exact-fee fast path—not a general RAG/LLM latency result, not a baseline comparison, and not an accuracy benchmark. The returned course and fee were read directly from `backend/data/fees.md`.
+The deterministic fee lookup was exercised against the live backend on this development machine with 10 repeated requests: client-observed median **9 ms**, p95 **105 ms** (first request **105 ms**; subsequent requests **7–10 ms**). The API's first-response `total_ms` was **3.1 ms**. This is a small local sample for the exact-fee fast path—not a general RAG/LLM latency result, not a baseline comparison, and not an accuracy benchmark. The returned course and fee were read directly from `backend/data/fees.md`. Course-list, trainer, and admission lookups were also smoke-tested against their respective Markdown files; a plural `courses` question exposed a domain-check bug, which was fixed and covered by a test.
+The deterministic fee lookup was exercised against the live backend on this development machine with 10 repeated requests: client-observed median **9 ms**, p95 **105 ms** (first request **105 ms**; subsequent requests **7–10 ms**). The API's first-response `total_ms` was **3.1 ms**. This is a small local sample for the exact-fee fast path—not a general RAG/LLM latency result, not a baseline comparison, and not an accuracy benchmark. The returned course and fee were read directly from `backend/data/fees.md`. Course-list, trainer, and admission lookups were also smoke-tested against their respective Markdown files. Live testing then exposed a plural-topic guardrail bug and course-duration/list collision; both were fixed and regression tested. A duration query and a hostel query returned direct source-file answers in the follow-up smoke test.
+The deterministic fee lookup was exercised against the live backend on this development machine with 10 repeated requests: client-observed median **9 ms**, p95 **105 ms** (first request **105 ms**; subsequent requests **7–10 ms**). The API's first-response `total_ms` was **3.1 ms**. This is a small local sample for the exact-fee fast path—not a general RAG/LLM latency result, not a baseline comparison, and not an accuracy benchmark. The returned course and fee were read directly from `backend/data/fees.md`.
 
 Other rows in this table are configuration and behavior changes, **not measured speedup or accuracy claims**. General RAG latency varies by CPU/GPU, model availability, and Ollama load. Evaluate generated questions separately: run the same representative questions several times with a warm model, record stage timings, compare median/p95, and use labeled expected answers to measure retrieval recall and correctness.
 
@@ -48,6 +55,7 @@ Other rows in this table are configuration and behavior changes, **not measured 
 - ✅ Source Attribution
 - ✅ Source Attribution
 - ✅ Verified fee-table lookup without LLM dependency
+- ✅ Verified fee, course-list, trainer, and admissions lookups without LLM dependency
 - ✅ Greeting & Small Talk Handling
 
 ---
