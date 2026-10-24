@@ -93,14 +93,25 @@ if question:
                 answer = result["answer"]
 
                 sources = result["sources"]
+                metrics = result.get("metrics", {})
 
             except Exception as e:
 
                 answer = f"Error:\n\n{e}"
 
                 sources = []
+                metrics = {}
 
             st.markdown(answer)
+
+            if metrics:
+                st.caption(
+                    "Latency: "
+                    f"{metrics.get('total_ms', 0):.0f} ms total · "
+                    f"{metrics.get('retrieval_ms', 0):.0f} ms retrieval · "
+                    f"{metrics.get('rerank_ms', 0):.0f} ms reranking · "
+                    f"{metrics.get('generation_ms', 0):.0f} ms generation"
+                )
 
             if sources:
 

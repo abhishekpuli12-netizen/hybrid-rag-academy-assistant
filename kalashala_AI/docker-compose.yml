@@ -13,8 +13,10 @@ services:
 
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
       - CORS_ORIGINS=http://localhost:8501
       - LLM_KEEP_ALIVE=10m
+      - HF_HOME=/models/huggingface
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -22,6 +24,14 @@ services:
     volumes:
       - ./backend:/app
       - chroma-data:/app/index_store
+      - huggingface-cache:/models/huggingface
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 600s
 
     restart: unless-stopped
 
@@ -35,7 +45,8 @@ services:
       - "8501:8501"
 
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
     volumes:
       - ./frontend:/app
@@ -44,3 +55,4 @@ services:
 
 volumes:
   chroma-data:
+  huggingface-cache:

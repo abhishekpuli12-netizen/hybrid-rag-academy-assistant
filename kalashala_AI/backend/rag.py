@@ -7,6 +7,8 @@ import os
 import re
 import json
 import hashlib
+import logging
+from time import perf_counter
 from pathlib import Path
 
 import chromadb
@@ -26,6 +28,7 @@ from guardrails import (
     normalize_question,
     validate_generated_answer,
 )
+from knowledge_lookup import lookup_course_fee
 
 from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
@@ -37,6 +40,7 @@ OLLAMA_HOST = os.getenv(
     "http://localhost:11434"
 )
 ollama_client = ollama.Client(host=OLLAMA_HOST)
+logger = logging.getLogger(__name__)
 # ==========================================================
 # Project Paths
 # ==========================================================
@@ -65,7 +69,7 @@ EMBEDDING_MODEL_NAME = os.getenv(
 
 RERANKER_MODEL_NAME = os.getenv(
     "RERANKER_MODEL",
-    "BAAI/bge-reranker-base"
+    "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
 
 OLLAMA_MODEL = os.getenv(
@@ -570,6 +574,29 @@ def is_initialized():
         bm25 is not None
 
     )
+
+
+def answer_known_fee(question, request_started):
+    """Answer fee questions from the source table without an LLM call."""
+    lookup = lookup_course_fee(question, DATA_DIR / "fees.md")
+    if lookup is None:
+        return None
+
+    return {
+        "answer": lookup["answer"],
+        "sources": [lookup["source"]],
+        "metrics": {
+            "retrieval_ms": 0.0,
+            "rerank_ms": 0.0,
+            "generation_ms": 0.0,
+            "total_ms": round((perf_counter() - request_started) * 1000, 1),
+            "dense_candidates": 0,
+            "sparse_candidates": 0,
+            "reranked_candidates": 0,
+            "context_chunks": lookup["matched_rows"],
+            "answer_mode": "verified_fee_lookup",
+        },
+    }
 # ==========================================================
 # Semantic Search (Dense Retrieval)
 # ==========================================================
@@ -902,6 +929,7 @@ def answer_question(
     top_k_retrieve=14,
     top_k_context=4
 ):
+    request_started = perf_counter()
 
     try:
         question = normalize_question(question)
@@ -981,6 +1009,10 @@ def answer_question(
     if not is_academy_related(question):
         return {"answer": OUT_OF_DOMAIN_RESPONSE, "sources": []}
 
+    exact_answer = answer_known_fee(question, request_started)
+    if exact_answer is not None:
+        return exact_answer
+
     print("=" * 60)
     print("Inside answer_question()")
     print(f"Question: {question}")
@@ -1002,14 +1034,17 @@ def answer_question(
         question,
         k=top_k_retrieve
     )
+    retrieval_ms = (perf_counter() - request_started) * 1000
 
     # ------------------------------------
     # Cross Encoder Re-ranking
     # ------------------------------------
+    rerank_started = perf_counter()
     ranked_docs = rerank(
         question,
         retrieved_docs[:RERANK_CANDIDATES]
     )
+    rerank_ms = (perf_counter() - rerank_started) * 1000
 
     if not ranked_docs:
         return {
@@ -1037,6 +1072,7 @@ def answer_question(
     # ------------------------------------
     # Generate Response
     # ------------------------------------
+    generation_started = perf_counter()
     try:
 
         response = ollama_client.chat(
@@ -1058,7 +1094,7 @@ def answer_question(
             keep_alive=LLM_KEEP_ALIVE,
         )
 
-        answer = response["message"]["content"].strip()
+        answer = response.message.content.strip()
         checked_answer = validate_generated_answer(answer, context)
         if checked_answer is None:
             answer = UNSUPPORTED_ANSWER_RESPONSE
@@ -1067,8 +1103,10 @@ def answer_question(
             answer = checked_answer
 
     except Exception:
+        logger.exception("Ollama generation failed")
         answer = "Sorry, I couldn't generate a response right now. Please try again shortly."
         top_docs = []
+    generation_ms = (perf_counter() - generation_started) * 1000
 
     # ------------------------------------
     # Sources
@@ -1085,7 +1123,17 @@ def answer_question(
 
     return {
         "answer": answer,
-        "sources": sources
+        "sources": sources,
+        "metrics": {
+            "retrieval_ms": round(retrieval_ms, 1),
+            "rerank_ms": round(rerank_ms, 1),
+            "generation_ms": round(generation_ms, 1),
+            "total_ms": round((perf_counter() - request_started) * 1000, 1),
+            "dense_candidates": min(DENSE_CANDIDATES, len(all_chunks)),
+            "sparse_candidates": min(SPARSE_CANDIDATES, len(all_chunks)),
+            "reranked_candidates": min(RERANK_CANDIDATES, len(retrieved_docs)),
+            "context_chunks": len(top_docs),
+        },
     }
 # ==========================================================
 # Test Locally

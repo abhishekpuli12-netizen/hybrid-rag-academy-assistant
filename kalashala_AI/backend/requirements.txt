@@ -4,7 +4,6 @@ ollama
 chromadb>=0.6,<2.0
 sentence-transformers
 transformers
-torch
 langchain-text-splitters
 rank-bm25
 numpy

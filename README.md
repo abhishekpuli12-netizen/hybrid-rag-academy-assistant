@@ -10,6 +10,26 @@ Hybrid RAG Academy Assistant is an AI-powered chatbot that provides accurate and
 
 Instead of relying solely on an LLM, the assistant retrieves relevant information from a structured knowledge base using **Hybrid Retrieval (ChromaDB + BM25)** and improves relevance using **Cross-Encoder Re-ranking** before generating a response with **Ollama (Llama 3)**.
 
+## Latest improvements and measured metrics
+
+| Area | Previous behavior | Current behavior / metric |
+|---|---|---|
+| Vector store | FAISS index and committed pickle artifacts | Persistent ChromaDB collection; legacy FAISS/pickle artifacts removed from Git |
+| Dense retrieval | FAISS top 20 candidates | ChromaDB cosine top 12 by default |
+| Sparse retrieval | BM25 top 20 candidates | BM25 top 12 by default |
+| Cross-encoder | Reranked every retrieved candidate | Reranks at most 8 candidates by default |
+| Cross-encoder | `BAAI/bge-reranker-base` | `cross-encoder/ms-marco-MiniLM-L-6-v2` default for a smaller download and faster CPU reranking; override with `RERANKER_MODEL` |
+| Context | Up to 4 chunks | Up to 4 chunks by default |
+| Generation | Model lifecycle and output length not tuned | Ollama keep-alive `10m`, response capped at 256 generated tokens by default |
+| Generation | Default `llama3` (8B, ~4.7 GB model file) | Docker defaults to `llama3.2:1b` for lower-memory local runs; set `OLLAMA_MODEL` to another installed Ollama model |
+| Safety | Primarily prompt-based | 500-character input cap, injection/domain checks, output-size and disclosure checks, unsupported-number rejection |
+| Runtime telemetry | No stage breakdown | API `X-Process-Time-Ms` header and per-answer retrieval/rerank/generation/total metrics |
+
+These are configuration and behavior changes, **not measured speedup or accuracy claims**. No comparable before/after benchmark has been run yet. Real latency varies by CPU/GPU, model availability, first-run model download, and Ollama load. For a meaningful comparison, run the same representative questions several times with a warm model, record stage timings, and compare median and p95 latency; use a labeled question set to measure retrieval recall and answer correctness.
+The deterministic fee lookup was exercised against the live backend on this development machine with 10 repeated requests: client-observed median **9 ms**, p95 **105 ms** (first request **105 ms**; subsequent requests **7–10 ms**). The API's first-response `total_ms` was **3.1 ms**. This is a small local sample for the exact-fee fast path—not a general RAG/LLM latency result, not a baseline comparison, and not an accuracy benchmark. The returned course and fee were read directly from `backend/data/fees.md`.
+
+Other rows in this table are configuration and behavior changes, **not measured speedup or accuracy claims**. General RAG latency varies by CPU/GPU, model availability, and Ollama load. Evaluate generated questions separately: run the same representative questions several times with a warm model, record stage timings, compare median/p95, and use labeled expected answers to measure retrieval recall and correctness.
+
 ---
 
 ## 🚀 Features
@@ -26,6 +46,8 @@ Instead of relying solely on an LLM, the assistant retrieves relevant informatio
 - ✅ Domain Restricted Responses
 - ✅ Structured Responses
 - ✅ Source Attribution
+- ✅ Source Attribution
+- ✅ Verified fee-table lookup without LLM dependency
 - ✅ Greeting & Small Talk Handling
 
 ---
@@ -185,11 +207,11 @@ If the requested information is outside the academy knowledge base, the assistan
 ### Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/hybrid-rag-academy-assistant.git
+git clone https://github.com/abhishekpuli12-netizen/hybrid-rag-academy-assistant.git
 ```
 
 ```
-cd hybrid-rag-academy-assistant
+cd hybrid-rag-academy-assistant/kalashala_AI
 ```
 
 ---
@@ -220,10 +242,10 @@ pip install streamlit requests
 ollama serve
 ```
 
-Download the model:
+Download the model (and ensure the configured embedding and reranker models can be downloaded on first start):
 
 ```bash
-ollama pull llama3
+ollama pull llama3.2:1b
 ```
 
 ---
@@ -253,10 +275,16 @@ streamlit run app.py
 Build and run the complete application:
 
 ```bash
-docker compose up --build
+cd kalashala_AI
+docker compose up --build -d
 ```
 
-ChromaDB data is stored in the Docker volume `chroma-data` and is rebuilt automatically when the Markdown knowledge base changes. The API adds an `X-Process-Time-Ms` response header for measuring request latency.
+Open the interface at [http://localhost:8501](http://localhost:8501). Check backend readiness at [http://localhost:8000/health](http://localhost:8000/health). ChromaDB data is stored in the Docker volume `chroma-data` and is rebuilt automatically when the Markdown knowledge base changes. To stop the stack, use `docker compose down` (this preserves Chroma data).
+
+The Docker backend installs CPU-only PyTorch so a CPU deployment does not download the CUDA libraries. Docker Desktop's Linux engine must be running. The host Ollama service must respond at `http://localhost:11434` and have the configured generation model pulled (`llama3.2:1b` by default in Docker). A larger model such as `llama3` may exceed available host memory; set `OLLAMA_MODEL` in the environment if a different model is installed and supported. First startup also downloads the embedding and reranker models and builds the Chroma index; allow it time to complete. The frontend waits for backend readiness, and Docker health status is available with `docker compose ps`. Hugging Face model files and Chroma data are persisted in named Docker volumes across rebuilds. Check startup logs with `docker compose logs -f backend`.
+
+The API adds an `X-Process-Time-Ms` header. Each chat response also contains `metrics`: retrieval, rerank, generation, and total milliseconds, candidate counts, and context chunk count. The Streamlit UI displays the latency breakdown. These measurements are per request; the first request may include model warm-up and should be excluded from steady-state comparisons.
+The API adds an `X-Process-Time-Ms` header. Each generated chat response also contains `metrics`: retrieval, rerank, generation, and total milliseconds, candidate counts, and context chunk count. The Streamlit UI displays the latency breakdown. These measurements are per request; the first request may include model warm-up and should be excluded from steady-state comparisons. Greetings and deterministic guardrail declines do not call the generation pipeline and may not include stage metrics.
 
 Useful backend environment settings include `EMBEDDING_MODEL`, `RERANKER_MODEL`, `DENSE_CANDIDATES` (default 12), `SPARSE_CANDIDATES` (default 12), `RERANK_CANDIDATES` (default 8), `MAX_CONTEXT_CHUNKS` (default 4), `LLM_NUM_PREDICT` (default 256), `LLM_KEEP_ALIVE` (default `10m`), and `CORS_ORIGINS`. Set `CHAT_API_URL` and `CHAT_TIMEOUT_SECONDS` for the Streamlit frontend when needed. Lowering retrieval candidate limits may improve response time but should be checked against a small question/answer evaluation set before deployment.
 
