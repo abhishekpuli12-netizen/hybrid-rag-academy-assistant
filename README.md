@@ -1,5 +1,3 @@
-| Knowledge answers | Every academy question depended on retrieval and an LLM response | Fees, offered-course lists, named course details, trainer/CIDESCO, admissions/contact, and common facilities/FAQ answers are read directly from trusted Markdown files |
-| Safety | Primarily prompt-based | 500-character input cap, injection/domain checks, output-size and disclosure checks, unsupported-number rejection |
 # 🎓 Hybrid RAG Academy Assistant
 
 A Retrieval-Augmented Generation (RAG) based AI assistant for **Kalashala Beauty & Makeup Academy** that answers academy-related queries using a local Large Language Model (LLM), Hybrid Search, and Cross-Encoder Reranking.
@@ -10,49 +8,23 @@ A Retrieval-Augmented Generation (RAG) based AI assistant for **Kalashala Beauty
 
 Hybrid RAG Academy Assistant is an AI-powered chatbot that provides accurate and context-aware answers about courses, fees, trainers, admissions, certifications, and other academy-related information.
 
-Instead of relying solely on an LLM, the assistant retrieves relevant information from a structured knowledge base using **Hybrid Retrieval (ChromaDB + BM25)** and improves relevance using **Cross-Encoder Re-ranking** before generating a response with **Ollama (Llama 3)**.
-
-## Latest improvements and measured metrics
-
-| Area | Previous behavior | Current behavior / metric |
-|---|---|---|
-| Vector store | FAISS index and committed pickle artifacts | Persistent ChromaDB collection; legacy FAISS/pickle artifacts removed from Git |
-| Dense retrieval | FAISS top 20 candidates | ChromaDB cosine top 12 by default |
-| Sparse retrieval | BM25 top 20 candidates | BM25 top 12 by default |
-| Cross-encoder | Reranked every retrieved candidate | Reranks at most 8 candidates by default |
-| Cross-encoder | `BAAI/bge-reranker-base` | `cross-encoder/ms-marco-MiniLM-L-6-v2` default for a smaller download and faster CPU reranking; override with `RERANKER_MODEL` |
-| Context | Up to 4 chunks | Up to 4 chunks by default |
-| Generation | Model lifecycle and output length not tuned | Ollama keep-alive `10m`, response capped at 256 generated tokens by default |
-| Generation | Default `llama3` (8B, ~4.7 GB model file) | Docker defaults to `llama3.2:1b` for lower-memory local runs; set `OLLAMA_MODEL` to another installed Ollama model |
-| Safety | Primarily prompt-based | 500-character input cap, injection/domain checks, output-size and disclosure checks, unsupported-number rejection |
-| Runtime telemetry | No stage breakdown | API `X-Process-Time-Ms` header and per-answer retrieval/rerank/generation/total metrics |
-
-These are configuration and behavior changes, **not measured speedup or accuracy claims**. No comparable before/after benchmark has been run yet. Real latency varies by CPU/GPU, model availability, first-run model download, and Ollama load. For a meaningful comparison, run the same representative questions several times with a warm model, record stage timings, and compare median and p95 latency; use a labeled question set to measure retrieval recall and answer correctness.
-These are configuration and behavior changes, **not measured speedup or accuracy claims**. Real latency varies by CPU/GPU, model availability, first-run model download, and Ollama load. For a meaningful general-RAG comparison, run the same representative questions several times with a warm model, record stage timings, and compare median and p95; use a labeled question set to measure retrieval recall and answer correctness.
-
-The deterministic fee lookup was exercised against the live backend on this development machine with 10 repeated requests: client-observed median **9 ms**, p95 **105 ms** (the first request was **105 ms**, later requests **7–10 ms**); the API reported **3.1 ms** on that first sample. This small sample measures only the fee fast path—not generated RAG/LLM latency or accuracy. Additional live smoke tests verified course lists, course duration, trainer certification, enrollment contacts, hostel availability, and out-of-domain refusal against their respective Markdown sources.
-
-Other rows in this table are configuration and behavior changes, **not measured speedup or accuracy claims**. General RAG latency varies by CPU/GPU, model availability, and Ollama load. Evaluate generated questions separately: run the same representative questions several times with a warm model, record stage timings, compare median/p95, and use labeled expected answers to measure retrieval recall and correctness.
+Instead of relying solely on an LLM, the assistant retrieves relevant information from a structured knowledge base using **Hybrid Retrieval (FAISS + BM25)** and improves relevance using **Cross-Encoder Re-ranking** before generating a response with **Ollama (Llama 3)**.
 
 ---
 
 ## 🚀 Features
 
-- ✅ Hybrid Retrieval (ChromaDB + BM25)
+- ✅ Hybrid Retrieval (FAISS + BM25)
 - ✅ Cross-Encoder Re-ranking
 - ✅ Local LLM using Ollama (Llama 3)
 - ✅ FastAPI REST Backend
 - ✅ Streamlit Chat Interface
 - ✅ Dockerized Deployment
 - ✅ Markdown Knowledge Base
-- ✅ Deterministic input validation and prompt-injection checks
-- ✅ Output checks for prompt disclosure and unsupported numeric claims
+- ✅ Prompt Injection Protection
 - ✅ Domain Restricted Responses
 - ✅ Structured Responses
 - ✅ Source Attribution
-- ✅ Source Attribution
-- ✅ Verified fee-table lookup without LLM dependency
-- ✅ Verified fee, course-list, trainer, and admissions lookups without LLM dependency
 - ✅ Greeting & Small Talk Handling
 
 ---
@@ -81,7 +53,7 @@ Other rows in this table are configuration and behavior changes, **not measured 
 - Llama 3
 - Sentence Transformers
 - Cross Encoder
-- ChromaDB (persistent local vector database)
+- FAISS
 - BM25
 
 ### Deployment
@@ -161,15 +133,7 @@ The assistant retrieves information from Markdown documents such as:
 
 ## 🛡️ Security Features
 
-The assistant is designed to answer **only academy-related questions**. These checks do not rely on the prompt alone:
-
-- API requests must contain a non-empty question of at most 500 characters.
-- Common role-override and instruction-disclosure attempts are rejected before retrieval.
-- Non-academy questions are declined before calling the language model.
-- Generated answers are checked for internal-prompt disclosure and numeric claims not present in retrieved evidence. Answers that fail the check are replaced with a safe response.
-- Retrieved content is supplied as untrusted reference data, separately from the system policy.
-
-These are defense-in-depth checks, not a guarantee against every possible model failure. Keep the knowledge base trusted and review behavior with representative tests before production use.
+The assistant is designed to answer **only academy-related questions**.
 
 It resists common prompt injection attempts such as:
 
@@ -212,11 +176,11 @@ If the requested information is outside the academy knowledge base, the assistan
 ### Clone Repository
 
 ```bash
-git clone https://github.com/abhishekpuli12-netizen/hybrid-rag-academy-assistant.git
+git clone https://github.com/yourusername/hybrid-rag-academy-assistant.git
 ```
 
 ```
-cd hybrid-rag-academy-assistant/kalashala_AI
+cd hybrid-rag-academy-assistant
 ```
 
 ---
@@ -247,10 +211,10 @@ pip install streamlit requests
 ollama serve
 ```
 
-Download the model (and ensure the configured embedding and reranker models can be downloaded on first start):
+Download the model:
 
 ```bash
-ollama pull llama3.2:1b
+ollama pull llama3
 ```
 
 ---
@@ -280,20 +244,8 @@ streamlit run app.py
 Build and run the complete application:
 
 ```bash
-cd kalashala_AI
-docker compose up --build -d
+docker compose up --build
 ```
-
-Open the interface at [http://localhost:8501](http://localhost:8501). Check backend readiness at [http://localhost:8000/health](http://localhost:8000/health). ChromaDB data is stored in the Docker volume `chroma-data` and is rebuilt automatically when the Markdown knowledge base changes. To stop the stack, use `docker compose down` (this preserves Chroma data).
-
-The Docker backend installs CPU-only PyTorch so a CPU deployment does not download the CUDA libraries. Docker Desktop's Linux engine must be running. The host Ollama service must respond at `http://localhost:11434` and have the configured generation model pulled (`llama3.2:1b` by default in Docker). A larger model such as `llama3` may exceed available host memory; set `OLLAMA_MODEL` in the environment if a different model is installed and supported. First startup also downloads the embedding and reranker models and builds the Chroma index; allow it time to complete. The frontend waits for backend readiness, and Docker health status is available with `docker compose ps`. Hugging Face model files and Chroma data are persisted in named Docker volumes across rebuilds. Check startup logs with `docker compose logs -f backend`.
-
-The API adds an `X-Process-Time-Ms` header. Each chat response also contains `metrics`: retrieval, rerank, generation, and total milliseconds, candidate counts, and context chunk count. The Streamlit UI displays the latency breakdown. These measurements are per request; the first request may include model warm-up and should be excluded from steady-state comparisons.
-The API adds an `X-Process-Time-Ms` header. Each generated chat response also contains `metrics`: retrieval, rerank, generation, and total milliseconds, candidate counts, and context chunk count. The Streamlit UI displays the latency breakdown. These measurements are per request; the first request may include model warm-up and should be excluded from steady-state comparisons. Greetings and deterministic guardrail declines do not call the generation pipeline and may not include stage metrics.
-
-Useful backend environment settings include `EMBEDDING_MODEL`, `RERANKER_MODEL`, `DENSE_CANDIDATES` (default 12), `SPARSE_CANDIDATES` (default 12), `RERANK_CANDIDATES` (default 8), `MAX_CONTEXT_CHUNKS` (default 4), `LLM_NUM_PREDICT` (default 256), `LLM_KEEP_ALIVE` (default `10m`), and `CORS_ORIGINS`. Set `CHAT_API_URL` and `CHAT_TIMEOUT_SECONDS` for the Streamlit frontend when needed. Lowering retrieval candidate limits may improve response time but should be checked against a small question/answer evaluation set before deployment.
-
-The local LLM's generation time is often the largest part of end-to-end latency; keeping the model loaded avoids repeated model warm-up, while retrieval candidate limits reduce reranker work. The process-time header measures the complete API request, including model generation.
 
 ---
 

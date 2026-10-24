@@ -1,10 +1,7 @@
-import os
-
 import requests
 import streamlit as st
 
-API_URL = os.getenv("CHAT_API_URL", "http://backend:8000/chat")
-CHAT_TIMEOUT_SECONDS = int(os.getenv("CHAT_TIMEOUT_SECONDS", "120"))
+API_URL = "http://backend:8000/chat"
 
 st.set_page_config(
     page_title="Kalashala AI Assistant",
@@ -84,34 +81,22 @@ if question:
                         "question": question
                     },
 
-                    timeout=CHAT_TIMEOUT_SECONDS
+                    timeout=300
                 )
-                response.raise_for_status()
 
                 result = response.json()
 
                 answer = result["answer"]
 
                 sources = result["sources"]
-                metrics = result.get("metrics", {})
 
             except Exception as e:
 
                 answer = f"Error:\n\n{e}"
 
                 sources = []
-                metrics = {}
 
             st.markdown(answer)
-
-            if metrics:
-                st.caption(
-                    "Latency: "
-                    f"{metrics.get('total_ms', 0):.0f} ms total · "
-                    f"{metrics.get('retrieval_ms', 0):.0f} ms retrieval · "
-                    f"{metrics.get('rerank_ms', 0):.0f} ms reranking · "
-                    f"{metrics.get('generation_ms', 0):.0f} ms generation"
-                )
 
             if sources:
 
