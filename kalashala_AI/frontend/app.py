@@ -1,7 +1,10 @@
+import os
+
 import requests
 import streamlit as st
 
-API_URL = "http://backend:8000/chat"
+API_URL = os.getenv("CHAT_API_URL", "http://backend:8000/chat")
+CHAT_TIMEOUT_SECONDS = int(os.getenv("CHAT_TIMEOUT_SECONDS", "120"))
 
 st.set_page_config(
     page_title="Kalashala AI Assistant",
@@ -81,8 +84,9 @@ if question:
                         "question": question
                     },
 
-                    timeout=300
+                    timeout=CHAT_TIMEOUT_SECONDS
                 )
+                response.raise_for_status()
 
                 result = response.json()
 

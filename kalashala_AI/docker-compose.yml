@@ -13,12 +13,15 @@ services:
 
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - CORS_ORIGINS=http://localhost:8501
+      - LLM_KEEP_ALIVE=10m
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
     volumes:
       - ./backend:/app
+      - chroma-data:/app/index_store
 
     restart: unless-stopped
 
@@ -38,3 +41,6 @@ services:
       - ./frontend:/app
 
     restart: unless-stopped
+
+volumes:
+  chroma-data:

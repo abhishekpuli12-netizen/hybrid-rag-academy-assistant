@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
+import os
+from time import perf_counter
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
-from rag import initialize_rag, answer_question
+from guardrails import MAX_QUESTION_LENGTH, normalize_question
+from rag import initialize_rag, answer_question, is_initialized
 
 
 # ==========================================================
@@ -46,8 +49,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://localhost:8501"
+        ).split(",")
+        if origin.strip()
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -58,7 +67,20 @@ app.add_middleware(
 # ==========================================================
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=MAX_QUESTION_LENGTH)
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, value: str) -> str:
+        return normalize_question(value)
+
+
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+    started = perf_counter()
+    response = await call_next(request)
+    response.headers["X-Process-Time-Ms"] = f"{(perf_counter() - started) * 1000:.1f}"
+    return response
 
 
 # ==========================================================
@@ -75,20 +97,14 @@ def home():
     }
 
 
+@app.get("/health")
+def health():
+    return {"status": "ready" if is_initialized() else "starting"}
+
+
 # ==========================================================
 # Chat Endpoint
 # ==========================================================
 @app.post("/chat")
 def chat(request: ChatRequest):
-
-    print("=" * 50)
-    print("Received Question:")
-    print(request.question)
-
-    print("Calling RAG...")
-
-    result = answer_question(request.question)
-
-    print("Answer generated.")
-
-    return result
+    return answer_question(request.question)

@@ -1,12 +1,10 @@
 fastapi
 uvicorn
 ollama
-faiss-cpu
+chromadb>=0.6,<2.0
 sentence-transformers
 transformers
 torch
-torchvision
-torchaudio
 langchain-text-splitters
 rank-bm25
 numpy

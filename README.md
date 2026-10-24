@@ -8,20 +8,21 @@ A Retrieval-Augmented Generation (RAG) based AI assistant for **Kalashala Beauty
 
 Hybrid RAG Academy Assistant is an AI-powered chatbot that provides accurate and context-aware answers about courses, fees, trainers, admissions, certifications, and other academy-related information.
 
-Instead of relying solely on an LLM, the assistant retrieves relevant information from a structured knowledge base using **Hybrid Retrieval (FAISS + BM25)** and improves relevance using **Cross-Encoder Re-ranking** before generating a response with **Ollama (Llama 3)**.
+Instead of relying solely on an LLM, the assistant retrieves relevant information from a structured knowledge base using **Hybrid Retrieval (ChromaDB + BM25)** and improves relevance using **Cross-Encoder Re-ranking** before generating a response with **Ollama (Llama 3)**.
 
 ---
 
 ## 🚀 Features
 
-- ✅ Hybrid Retrieval (FAISS + BM25)
+- ✅ Hybrid Retrieval (ChromaDB + BM25)
 - ✅ Cross-Encoder Re-ranking
 - ✅ Local LLM using Ollama (Llama 3)
 - ✅ FastAPI REST Backend
 - ✅ Streamlit Chat Interface
 - ✅ Dockerized Deployment
 - ✅ Markdown Knowledge Base
-- ✅ Prompt Injection Protection
+- ✅ Deterministic input validation and prompt-injection checks
+- ✅ Output checks for prompt disclosure and unsupported numeric claims
 - ✅ Domain Restricted Responses
 - ✅ Structured Responses
 - ✅ Source Attribution
@@ -53,7 +54,7 @@ Instead of relying solely on an LLM, the assistant retrieves relevant informatio
 - Llama 3
 - Sentence Transformers
 - Cross Encoder
-- FAISS
+- ChromaDB (persistent local vector database)
 - BM25
 
 ### Deployment
@@ -133,7 +134,15 @@ The assistant retrieves information from Markdown documents such as:
 
 ## 🛡️ Security Features
 
-The assistant is designed to answer **only academy-related questions**.
+The assistant is designed to answer **only academy-related questions**. These checks do not rely on the prompt alone:
+
+- API requests must contain a non-empty question of at most 500 characters.
+- Common role-override and instruction-disclosure attempts are rejected before retrieval.
+- Non-academy questions are declined before calling the language model.
+- Generated answers are checked for internal-prompt disclosure and numeric claims not present in retrieved evidence. Answers that fail the check are replaced with a safe response.
+- Retrieved content is supplied as untrusted reference data, separately from the system policy.
+
+These are defense-in-depth checks, not a guarantee against every possible model failure. Keep the knowledge base trusted and review behavior with representative tests before production use.
 
 It resists common prompt injection attempts such as:
 
@@ -246,6 +255,12 @@ Build and run the complete application:
 ```bash
 docker compose up --build
 ```
+
+ChromaDB data is stored in the Docker volume `chroma-data` and is rebuilt automatically when the Markdown knowledge base changes. The API adds an `X-Process-Time-Ms` response header for measuring request latency.
+
+Useful backend environment settings include `EMBEDDING_MODEL`, `RERANKER_MODEL`, `DENSE_CANDIDATES` (default 12), `SPARSE_CANDIDATES` (default 12), `RERANK_CANDIDATES` (default 8), `MAX_CONTEXT_CHUNKS` (default 4), `LLM_NUM_PREDICT` (default 256), `LLM_KEEP_ALIVE` (default `10m`), and `CORS_ORIGINS`. Set `CHAT_API_URL` and `CHAT_TIMEOUT_SECONDS` for the Streamlit frontend when needed. Lowering retrieval candidate limits may improve response time but should be checked against a small question/answer evaluation set before deployment.
+
+The local LLM's generation time is often the largest part of end-to-end latency; keeping the model loaded avoids repeated model warm-up, while retrieval candidate limits reduce reranker work. The process-time header measures the complete API request, including model generation.
 
 ---
 
